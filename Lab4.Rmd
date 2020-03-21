@@ -1,0 +1,130 @@
+---
+title: "STAT 410 Lab Mod 4"
+author: "Kristin Duncan"
+date: "2/17/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(HSAUR3)
+library(ggmosaic)
+library(ggplot2)
+data(package = "HSAUR3")
+```
+
+## Exercise 1
+The dataset HairEyeColor gives hair and eye color reported by students at the University of Delaware in the 1970s.  The data is set up in a three-dimensional array with hair color being the first dimension, eye color the second, and sex being the third (or panel) variable.
+
+* Aggregate the data for both genders into a single matrix called HairEye.  You can do this using the apply function with sum as the function and both the first and second dimensions as the margin (MARGIN=c(1,2)).
+* Determine if all the expected cell counts are at least 5 for the aggregated matrix HairEye.  You only need to do this for the smallest expected cell count, so you can find the smallest row total and smallest column total and compute expected count for the corresponding cell. 
+*Conduct a test to determine if hair and eye colors are associated.  Include all five steps of the hypothesis test.
+
+Hypothesis:
+$H_0$: There is no association between variables A and B (the variables are independent)
+
+$H_A$: There is some association between variables A and B (the variables are dependent)
+
+Assumptions:
+The data are a simple random sample from the population of interest and all expected cell counts are at least five.
+
+Significance Level:
+$\alpha = .05$
+
+Test:
+```{r ex1}
+dim(HairEyeColor)
+
+HairEyeColor
+HairEye = apply(X = HairEyeColor, MARGIN = c(1, 2), FUN = sum) ##merging both data sets for each sex to get total amount for eavh category
+HairEye
+which.min(apply(HairEye, MARGIN = 1, sum))##finds minimum for eavh cell by row and column
+which.min(apply(HairEye, MARGIN = 2, sum))
+chisq.test(HairEye) ##uses chi squared test since there are > 2 categories(eye coler, hair color, sex)
+```
+Conclusion:
+Based on the small p-value, we do see sufficient evidence to conclude the treatment and outcome are associated.
+
+
+## Exercise 2
+
+The dataset foster in HSAUR3 gives genotypes for rat mothers and their litters.
+
+* Create a matrix called geno that gives counts of genotype for mother and litter in a two-way table
+* Conduct a test to determine if mother's genotype and litter's genotype are associated.  Include all five steps of the hypothesis test (you might not have a value for step 3).
+
+Hypothesis:
+$H_0$: Variables A and B are independent (not associated)
+
+$H_A$: Variables A and B are dependent (associated)
+
+Assumptions:
+We assume the data being uses fallows a hypergeometric distribution.
+
+Significance Level:
+$\alpha = .05$
+```{r ex2}
+foster
+geno = with(foster, table(motgen, litgen)) ##creates table with categories motgen and litgen
+geno
+fisher.test(geno) ##use fisher test for two category association test
+```
+Conclusion:
+Looking at the p-value, there seems to be no association as the observations are not surprising. We fail to reject $H_0$.
+
+
+## Exercise 3
+A mosaic plot is a way to visualize the joint distribution of two categoriacal variables.  We can get mosaic plots in both the base and ggplot2 packages.
+
+* Use the mosaicplot command to make a mosaic plot of your HairEye matrix from exercise 1.  Just send in the matrix and leave all other arguments at their default value.
+* Use the mosaicplot command to make another mosaic plot of HairEye.  This time use the color argument with the vector c("burlywood4", "royalblue","darkseagreen4", "forestgreen" ).  To see a listing of different color names in R (if you want to use something different), use the command colors().
+* Use the mosaicplot command to make a third mosaic plot of HairEye.  Do not use the color argument, but set shade=T.
+* Write a few sentences explaining what the shade argument does and which mosaic plot you think is most useful and why. 
+```{r ex3}
+mosaicplot(HairEye)
+mosaicplot(HairEye, color = c("burlywood4", "royalblue","darkseagreen4", "forestgreen" ))
+mosaicplot(HairEye, shade = T)
+```
+## Explanation: The shade function serves to provide info on residuals with reference to the mean. The legend on the right side shows as an obervation falls below the expected value, it becomes more red. The same happens when the observation goes above, except this case yields blue. The more heavily shaded of each color, the further it is from the exected value.
+
+
+## Exercise 4
+To make a mosaic plot in ggplot2, you'll need to install the ggmosaic package.  Recall that ggplot commands require a data frame to begin, so if your data is already arranged in a table like HairEye, you'll need to reformat it.  We'll work with foster in this exercise to avoid reformatting. R does not have a built in function for reformatting, but there are plenty out there - countsToCases is one you can search.
+
+* Install the ggmosaic package.  Load ggplot2 and ggmosaic
+* Use a ggplot command with a geom_mosaic geometry to make a mosaic plot of the foster data.  Inside the geometry should be aes(x=product(litgen, motgen), fill=litgen)
+* add a labs line to label the x axis "Mother", the y axis "Litter" and the title "Rat Genotype"
+
+```{r ex4}
+ggplot(data = foster) +  
+  geom_mosaic(data = foster, aes(x=product(litgen, motgen), fill=litgen)) + ##creating the graph
+  labs(title = "Rat Genotype", x = "Mother", y = "Litter")
+```
+
+## Exercise 5
+A medical journal reported the data below on frequencies of cardiac deaths by day of the week.  Conduct a test at the .05 level of the null hypothesis that deaths are evenly distributed over the days of the week.  Complete all five steps of the hypothesis test.
+
+Hypothesis:
+$H_0$: There is no association between variables A and B (the variables are independent)
+
+$H_A$: There is some association between variables A and B (the variables are dependent)
+
+Assumptions:
+The data are a simple random sample from the population of interest and all expected cell counts are at least five.
+
+Significance Level:
+$\alpha = .05$
+
+Test:
+```{r ex5}
+cardiacdeaths=c(40, 17, 16, 29, 15, 20, 17)
+names(cardiacdeaths)=c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+cardiacdeaths
+chisq.test(cardiacdeaths)
+```
+Conclusion:
+Based on the small p-value, we do see sufficient evidence to conclude the treatment and outcome are associated.
+

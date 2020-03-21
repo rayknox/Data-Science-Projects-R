@@ -1,0 +1,246 @@
+---
+title: "STAT 410 Lab 6"
+author: "Raymond Knox, Ashlyn Phipps"
+date: "3/10/2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1
+
+Derive the least squares estimates for $\beta_0$ and $\beta_1$ in the simple linear regression model.  That is, show that \[\sum_{i=1}^n(y_i-(b_0-b_1x))^2\] is minimized when \[b_1=\frac{SS_{xy}}{SS_{x}}=\frac{\sum_{i=1}^n x_iy_i-\frac{1}{n}\sum_{i=1}^nx_i\sum_{i=1}^ny_i}{\sum_{i=1}^nx_i^2-\frac{1}{n}\left(\sum_{i=1}^nx_i\right)^2} \] and \[b_0=\overline{y}-b_1\overline{x}.\]  
+
+You can upload an image of your handwritten work.
+
+
+
+## Exercise 2
+Load the Survey package and access the apisrs data.  Check out all the variable definitions by putting apipop into the help search
+a. Create a filtered data set containing only the elementary schools.  Call this data set apiel
+b. Create two correlation matrices with ggpairs to look at how api00 relates to the other numeric variables in the data set.  One matrix should include api00 with columns 11, 20, 21, 23-26, and 34-36.  The other should include the parental education variables in columns 27-30. Do not consider api99, target, or growth in this analysis.  Comment on which variables are strongly associated and whether the association is positive or negative.
+c. Create a linear regression model predicting api00 with meals.  Output the summary data.
+d. Check the assumptions about residuals graphically.  Comment on whether the linear model seems appropriate here.
+e. Conduct a hypothesis test of the null that the slope is zero versus the alternative that the slope is negative.  Include all steps of the hypothesis test.
+f. Plot api00 versus meals using ggplot.  Include the confidence band for the line.  Add in the prediction ribbon for new observations using 95% confidence.
+g. Compute a 90% prediction interval for a school where 50 percent of students receive meals.  Give a sentence interpreting this interval.
+h. Identify the 5 schools with percent receiving meals over 50 that have the largest positive residuals.  These schools are doing well and may have programs others can emulate.
+
+
+```{r ex2, warnings=F}
+library(tidyverse)
+library(GGally)
+library(survey)
+library(HistData)
+library(dplyr)
+library(ggplot2)
+library(gamair)
+data(api, package="survey")
+apisrs
+```
+a. Create a filtered data set containing only the elementary schools.  Call this data set apiel
+```{r}
+apiel = apisrs %>%
+  filter(stype == "E")
+apiel
+nrow(apiel)
+```
+b. Create two correlation matrices with ggpairs to look at how api00 relates to the other numeric variables in the data set.  One matrix should include api00 with columns 11, 20, 21, 23-26, and 34-36. The other should include the parental education variables in columns 27-30. Do not consider api99, target, or growth in this analysis.  Comment on which variables are strongly associated and whether the association is positive or negative.
+```{r}
+mat1 = ggpairs(apiel[,c(11, 12, 20, 21, 23, 24, 25, 26, 34, 35, 36)])
+mat1
+
+mat2 = ggpairs(apiel[,c(12, 27:30)])
+mat2
+
+```
+```{r}
+cor(apiel$api00, apiel$meals)
+cor(apiel$api00, apiel$ell)
+cor(apiel$api00, apiel$acs.core)
+```
+
+
+Explanation: It would seem that api00 correlates with 'meals', 'ell', and 'acs.core' the most from the first matrix will negative correlations for 'meals' and 'ell' only. The second matrix sees strong negative correlation only with 'not.hsg' and nothing else.
+
+
+
+c. Create a linear regression model predicting api00 with meals.  Output the summary data.
+```{r}
+
+mapi = lm(data = apiel, api00 ~ meals)
+mapi  #"Linear Model"
+summary(mapi) #gives coefficients, not actual graph
+```
+d. Check the assumptions about residuals graphically.  Comment on whether the linear model seems appropriate here
+```{r}
+summary(mapi)
+
+plot(mapi) #plots all rsidual plots
+```
+Explanation: The smoother line approximation seems to be fairly straight which would indicate the linear model is an appropriate approach.
+
+e. Conduct a hypothesis test of the null that the slope is zero versus the alternative that the slope is negative.  Include all steps of the hypothesis test.
+
+1. Hypothesis:
+$H_0: \beta_1 = 0$ vs $H_0: \beta < 0$
+2. Assumptions:
+Residuals are iid and follow a normal distribution
+we want to make sure we dont see a relationship between residuals and x-values
+we check for normality by looking at a boxplot or density plot for example.
+3. Test statistic:
+T distribution with n-2 degrees of freedom when $H_0$ is true.
+```{r}
+pt(-17.56, 198, lower.tail=TRUE)
+```
+4. p-value is calculated by taking the left tail area on the F distribution.
+the p-value in this example is 1.539096e-42 
+5. If we reject $H_0$, we do have sufficient evidenct to conclude the slope is less than one.  If we fail to reject $H_0$, we do not have sufficient evidence to conclude that the slope is less than zero.
+
+
+
+f. Plot api00 versus meals using ggplot.  Include the confidence band for the line.  Add in the prediction ribbon for new observations using 95% confidence.
+```{r}
+pred.int = as.data.frame(predict(mapi, interval = "prediction"))
+                              #linear model goes in argument
+apielI = bind_cols(apiel, pred.int)
+#data frame goes in argument
+apimeal = ggplot(apielI, aes(x = meals, y = api00)) +
+  geom_point() +
+  stat_smooth(method = lm)
+apimeal
+
+apimeal +       
+geom_ribbon(aes(ymin = lwr, ymax = upr),
+               fill = "lightblue2", alpha = 0.05) 
+```
+
+g. Compute a 90% prediction interval for a school where 50 percent of students receive meals.  Give a sentence interpreting this interval.
+```{r}
+newscllm = lm(data = apiel, api00 ~ meals)
+newdata = data.frame(meals=50)
+predict(newscllm, newdata, interval="predict")
+```
+Explanation:
+A new school with 50% meal participation has a minimum api00 of 562 and an upper value of 806. Its central projection point is 684.
+
+
+h. Identify the 5 schools with percent receiving meals over 50 that have the largest positive residuals.  These schools are doing well and may have programs others can emulate.
+```{r}
+
+apielres = apiel %>%
+  filter(meals >= 50)
+apielres
+
+nrow(apielres)
+
+apiresid = resid(apielres)
+
+sort(apiresid)[c(138:142)]
+apiTop5=apiel[c(2,24,41,80,130),]
+apiTop5
+
+
+```
+
+
+
+
+
+
+
+
+
+## Exercise 3
+
+Continuing with the apiel dataset, consider predicting ell with meals. The relationship between meals and ell shows some nonlinearity.  Find a transformation that produces a higher R^2 value without causing problems in the residuals.  Verify this graphically and comment on the improvement.  Note that if you add a new (transformed) variable to the data set, it's fine to use this new name in the formula.  If you include the math operators for the trasformation in your formula, you should use the AsIs operator I() around your expression so the math operators are not misinterpreted in the formula.
+
+
+```{r}
+ggplot(apiel, aes(x = meals, y = ell)) + geom_point() + geom_smooth()
+
+#we see taht the correlation sucks so we'll look at transformations 
+
+cor(apiel$meals, apiel$ell)
+cor(exp(apiel$meals), apiel$ell)
+cor((apiel$meals)^2, apiel$ell)
+#x^2 has highest correlation
+ggplot(apiel, aes(x = (meals)^2, y = ell)) + geom_point() + geom_smooth()
+
+#ggplot(birds, aes(x=log(AR), y=N))+geom_point()
+#transformed to x^2
+
+apielm = lm(data = apiel, meals ~ ell)
+apielsqm = lm(data = apiel, (meals)^2 ~ ell)
+
+summary(apielm)
+summary(apielsqm)
+
+plot(apielm)  
+plot(apielsqm)
+
+```
+Explanation:
+The correlation is about 3% better when x is transformed into a quadratic. the qq plot and residual plots seem to be better with less overfitting. We also get a better R-Squared on the quadratic model (.57 > .53). 
+
+
+## Exercise 4
+
+a. Fit a linear model called edmodel predicting api00 with average parent education (avg.ed).
+b. Give 95% confidence intervals for the slopes and intercepts of this model.  The matrix summary(edmodel)$coefficients has the estimates in the first column and their standard errors in the second column.
+c. Evalute the fit and predictive ability of this model.  ie, how far off do you expect predictions to be on average, and what fraction of the variability in api00 can be explained by the regression on avg.ed?
+d. Calculate $(X'X)$ for this model.  Identify what values fall in each of the four slots  (what formula would go in each generally)?
+
+
+
+a. Fit a linear model called edmodel predicting api00 with average parent education (avg.ed).
+```{r}
+edmodel = lm(data = apiel, avg.ed ~ api00)
+summary(edmodel)
+plot(edmodel)
+
+edmodelgraph = ggplot(data = apiel, aes(x = avg.ed, y = api00)) +
+  geom_point() + 
+  geom_smooth()
+edmodelgraph
+```
+b. Give 95% confidence intervals for the slopes and intercepts of this model.  The matrix summary(edmodel)$coefficients has the estimates in the first column and their standard errors in the second column.
+```{r}
+confint(edmodel, level = .95)
+```
+
+
+c. Evalute the fit and predictive ability of this model.  ie, how far off do you expect predictions to be on average, and what fraction of the variability in api00 can be explained by the regression on avg.ed?
+
+```{r}
+summary(edmodel)
+```
+Given the confidence interval of the coefficients and an R-squared of about 3/4, we'll see that 1/4 of the predictions will not be able to be explained since they will not be covered under the variability. 
+
+
+
+d. Calculate $(X'X)$ for this model.  Identify what values fall in each of the four slots  (what formula would go in each generally)?
+
+```{r}
+y = apiel$api00
+y = as.matrix(cbind(rep(1, 142), x))
+y = na.omit(x)
+
+
+x = apiel$avg.ed
+x = as.matrix(cbind(rep(1, 142), x))
+x = na.omit(x)
+t(x)%*%x
+t(x)%*%y
+solve(t(x)%*%x)
+solve(t(x)%*%x)%*%t(x)%*%y
+```
+
+
+
+

@@ -1,0 +1,181 @@
+---
+title: "STAT 410 Lab 5"
+author: "Kristin Duncan"
+date: "3/2/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+```
+
+## Exercise 1
+
+In lecture, you were given the following definitions for the one-way ANOVA model.
+
+\[SSB=\sum_{i=1}^m \sum_{j=1}^{n_i}(\overline{X}_{i.}-\overline{X}_{..})^2\]
+
+\[SSE=\sum_{i=1}^m \sum_{j=1}^{n_i}(X_{ij}-\overline{X}_{i.})^2\]
+
+\[SST=\sum_{i=1}^m \sum_{j=1}^{n_i}(X_{ij}-\overline{X}_{..})^2\]
+
+
+a. Show that 
+\[SSB=\sum_{i=1}^m \sum_{j=1}^{n_i}(\overline{X}_{i.}-\overline{X}_{..})^2=\left(\sum_{i=1}^m n_i\overline{X}_{i.}^2\right)-n\overline{X}_{..}^2.\] You can do this and part b by hand and upload an image/photo of your work.
+b. Show that $SST=SSB+SSE$.  Hint: subtract and add the same term ($\overline{X}_{i.}$) inside SST. 
+
+
+## Exercise 2
+
+Measurements of Ozone were taken daily over five months and it is of interest to determine if mean ozone measurement varies by month. Fill in the missing values in the ANOVA table.  Then use the pf command in R to get the p-value.  Give all steps of the hypothesis test.
+
+|   Source    |  df  |   Sum of Sq   |    Mean Sq    |    F   |  p-value    |
+|:------------|-----:|--------------:|--------------:|-------:|--------------------:|
+|  Between      |  4 |    29430     |     7357.7    | |    8.53    |4.866368e-06
+|  Within   |  111  |  95705        |     862.21      |        |         |
+|  Total   |  115  |  125143       |       1088.2    |        |         |
+
+
+```{r Ex2}
+p = pf(q = 8.53, df1 = 4, df2 =111, lower.tail = FALSE)
+p
+```
+
+
+
+## Exercise 3
+a. Make a boxplot of the defects by line for the following manufacturing data.
+b. Perform a Kruskal-Wallace test.  Include all parts of the test.
+c. Perform a one-way anova and compare results.  Check the degrees of freedom.  If they are not correct, make sure R is treating line as a factor.
+A)
+```{r}
+
+line1=c(6, 38, 3, 17, 11, 30,15, 16, 25, 5)
+line2=c(34, 28, 42, 13, 40, 31, 9, 32, 39, 27)
+line3=c(13, 35, 19, 4, 29, 0, 7, 33, 18, 24)
+defects=c(line1, line2, line3)
+line=c(rep(1, 10), rep(2, 10), rep(3, 10))
+manufacturing=as.data.frame(cbind(line=as.factor(line), defects))
+
+linebox = ggplot(data = manufacturing, aes(group = line, y = defects)) + 
+  geom_boxplot()
+linebox
+```
+B)
+
+Kruskal Test
+
+```{r}
+kruskal.test(data = manufacturing, x = defects, g = as.factor(line))##when we plot x against y, it is  y #~ x
+#we factor line so R doesnt treat it as a number a number
+```
+C)
+
+AOV
+
+
+```{r}
+aline = as.factor(line)
+
+aov = aov(defects ~ aline, data = manufacturing)
+summary(aov)
+```
+
+
+
+
+## Exercise 4
+
+The warpbreaks data set in the base package gives data on number of breaks when weaving for two types of wool (A and B) and three levels of tension (L, M, H).
+
+a. Construct a grouped boxplot of breaks. Comment on how the centers of data differ for the different wools and tensions.
+b. Use group_by and summarize in dplyr to create a dataframe called warpmeans of group means with variables wool, tension, and breakmean. Construct an interaction plot of these means.  Comment on whether there looks to be an interaction.
+c. Use two way anova to test for main effects of wool and tension and for an interaction effect.  Store the aov model as an object called warpaov. Give all steps of your hypothesis test.  Proceed with the aov even though sample sizes are small and normality is difficult to assess.
+d. An attribute of the aov class that we did not look at in lecture is the coefficients.  Type coef(warpaov) to see the estimated effects.  Note that the treatment effects do not sum to zero as in the statistical model we used in lecture.  Instead one of the factor levels is chosen as the reference level and the other effects are given relative to the reference level.  Which group was used by R for the reference group in this model?  
+
+A)
+```{r Ex5}
+warpbreaks
+table(warpbreaks$tension)
+table(warpbreaks$wool)
+
+breakswool = ggplot(data = warpbreaks, aes(group = wool, y = breaks)) + 
+  geom_boxplot(aes(col = wool), varwidth = T)
+
+
+breakstension = ggplot(data = warpbreaks, aes(group = tension, y = breaks)) + 
+  geom_boxplot(aes(col = tension), varwidth = T)
+
+
+grid.arrange(breakswool, breakstension, nrow = 1)
+```
+B)
+```{r}
+warpmeans = warpbreaks %>%
+  group_by(wool, tension) %>%
+  summarize(breakmeans = mean(breaks))
+warpmeans
+
+
+ggplot(warpmeans,  aes(x = tension, y = breakmeans, color = wool)) +
+  geom_line(aes(group = wool)) +
+  geom_point() +
+  labs(x="Tension", y="Breaks", title="Interaction Plot")
+##looking for non parralelel lines
+##if they converege we conduct huypo test
+```
+There seems to be interaction between the means
+C)
+```{r}
+                                                     #interacting terms
+#warpaov = summary(aov(breaks ~ tension + wool + tension:wool,
+            #data = warpbreaks))
+ ## Test main effects and interaction
+##MSE in this model has decreased from last model
+
+
+
+#summary(aov(breaks~tension + wool, data = warpbreaks))
+
+warpaov = summary(aov(breaks ~ as.factor(tension) + wool + as.factor(tension):wool,
+            data = warpbreaks))
+ ## Test main effects and interaction
+##MSE in this model has decreased from last model
+warpaov
+
+
+summary(aov(breaks~tension + wool, data = warpbreaks))
+```
+
+D)
+```{r}
+
+a = coef(aov(breaks ~ as.factor(tension) + wool + as.factor(tension):wool,
+            data = warpbreaks))
+a
+#dummy variable is the reference level
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
